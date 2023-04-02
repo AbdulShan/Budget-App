@@ -3,7 +3,7 @@ from tkinter import messagebox, ttk, Button, Frame, Label, Scrollbar, Toplevel, 
 from tkinter.ttk import Style, Treeview
 from tkcalendar import DateEntry
 import datetime
-import sqlite3
+import sqlite3 
 from json import dumps, loads
 
 #Styles
