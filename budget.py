@@ -2,12 +2,10 @@
 from tkinter import messagebox, ttk, Button, Frame, Label, Scrollbar, Toplevel, PhotoImage, BOTTOM, LEFT, RIGHT, CENTER, X, Y, Tk, Entry, NW, END, Text, StringVar
 from tkinter.ttk import Style, Treeview
 from tkcalendar import DateEntry
-from asyncio.windows_events import NULL
 import datetime
 import sqlite3
 from os import path, mkdir
 import subprocess
-import fpdf
 from json import dumps, loads
 
 #Styles
@@ -76,7 +74,7 @@ if "__main__"==__name__:
     root.geometry("%dx%d" % (width, height))
     #wont allow to resize window, and full screen when opening
     root.resizable(False,False)
-    root.state('zoomed')
+    #root.state('zoomed')
 
 def openeditwindow():
     global editwindow
