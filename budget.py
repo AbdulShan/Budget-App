@@ -4,7 +4,6 @@ from tkinter.ttk import Style, Treeview
 from tkcalendar import DateEntry
 import datetime
 import sqlite3
-from os import path, mkdir
 from json import dumps, loads
 
 #Styles
