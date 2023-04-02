@@ -5,7 +5,6 @@ from tkcalendar import DateEntry
 import datetime
 import sqlite3
 from os import path, mkdir
-import subprocess
 from json import dumps, loads
 
 #Styles
