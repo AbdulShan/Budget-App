@@ -26,6 +26,10 @@ selection_color='darkblue'
 
 menu_button_height=4
 
+#date and time, sorting date into dd/mm/yyyy
+date=datetime.date.today()
+datesorted=date.strftime("%d-%m-%Y")
+
 def scroll_bar(frame_name,widget):
     if frame_name=='menu_frame':
         v = Scrollbar(widget, orient = 'vertical')
@@ -108,7 +112,7 @@ def selected_item_from_treeview(treeview_name,treeview_name_string):
 def menu_frame_obj():
     global login_btn,add_btn,dealer_btn,update_btn,explore_btn
     login_btn=Button(menu_frame,text="Login",width = 25,height=menu_button_height,fg=element_color,bg=menu_button_color,command=lambda:[login_obj()])
-    add_btn=Button(menu_frame,text="Todays Budget",width = 25,state='disabled',fg=element_color,height=menu_button_height,bg=menu_button_color,command=lambda:[])
+    add_btn=Button(menu_frame,text="Todays Budget",width = 25,state='normal',fg=element_color,height=menu_button_height,bg=menu_button_color,command=lambda:[todays_budget()])
     update_btn=Button(menu_frame,text="Update Budget",width = 25,fg=element_color,state='disabled',height=menu_button_height,bg=menu_button_color,command=lambda:[()])
     explore_btn=Button(menu_frame,text="Budget History",width = 25,fg=element_color,state='disabled',height=menu_button_height,bg=menu_button_color,command=lambda:[])
 
@@ -171,6 +175,39 @@ def login_obj():
         else:
             messagebox.showerror(title='Error', message="Wrong Password")
 
+def todays_budget():
+    print()
+    global todays_budget_frame
+    todays_budget_frame= Frame(root,width=1670,height=1060,bg=frame_color)
+    todays_budget_frame.grid(row=0,column=1)
+    todays_budget_frame.propagate(0)
+
+    todays_budget_lbl=Label(todays_budget_frame,text="Todays Budget",font=book_antiqua_size18,bg=frame_color,fg=element_color)
+    todays_budget_lbl.place(relx = 0.4, rely = 0.008, anchor = NW)
+
+    #Objects
+    date_tb=Entry(todays_budget_frame,fg=element_color,bg=entry_box_color,font=arial,width=13)
+    date_tb.place(relx = 0.03, rely = 0.202, anchor = NW)
+    date_tb.insert(0,datesorted)
+    date_tb.config(state='disabled')
+
+    def lower_case2(event):
+        particulars.set(particulars.get().lower())
+    particulars= StringVar()
+    particulars_tb=Entry(todays_budget_frame,fg=element_color,bg=entry_box_color,font=arial,border=4,width=28,textvariable=particulars)
+    particulars_tb.place(relx = 0.10, rely = 0.198, anchor = NW)
+    particulars_tb.bind('<Key>',validation_25charecters)
+    particulars_tb.bind('<KeyRelease>',lower_case2)
+
+    Income_tb=Entry(todays_budget_frame,fg=element_color,bg=entry_box_color,font=arial,border=4,width=10)
+    Income_tb.place(relx = 0.256, rely = 0.198, anchor = NW)
+
+    expense_tb=Entry(todays_budget_frame,fg=element_color,bg=entry_box_color,font=arial,border=4,width=10)
+    expense_tb.place(relx = 0.315, rely = 0.198, anchor = NW)
+
+    ##############################################################################################################Purchase Add Button
+    purchase_add_update_btn=Button(purchase_frame,fg=element_color,bg=frame_button_color,text="Add",width = 21,border=4,command=lambda:[check_entry_condition()])
+    purchase_add_update_btn.place(relx = 0.384, rely = 0.198, anchor = NW)
 
 
 
