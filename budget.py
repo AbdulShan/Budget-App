@@ -97,17 +97,55 @@ style.configure("TCombobox",fieldbackground= entry_box_color,foreground= element
 def clear_all(treeview_name):
         for item in treeview_name.get_children():
             treeview_name.delete(item)
+    
+def clear_tv(treeview_name):
+    temp=messagebox.askquestion('Delete Product', 'Are you sure you want to Delete')
+    if temp=='yes':
+        for item in treeview_name.get_children():
+            treeview_name.delete(item)
+        try:
+            con=sqlite3.connect("my_data.sql")
+            cur=con.cursor()
+            cur.execute("drop table temp_daily_spends")
+            cur.execute("CREATE TABLE IF NOT EXISTS temp_daily_spends(date dates NOT NULL,particulars varchar2(25) PRIMARY KEY,income decimal,expense decimal)")
+            con.commit()
+            cur.execute("SELECT SUM(income)-SUM(expense) FROM temp_daily_spends")
+            total=cur.fetchall()
+            if str(total[0][0])=='None':
+                todays_total_lbl.configure(text="0000.00")
+            else:
+                todays_total_lbl.configure(text="{:.2f}".format(float(total[0][0])))
+            con.close()
+        except sqlite3.Error as err:
+            print("Error - ",err)
+            con.close()
 
 def selected_item_from_treeview(treeview_name,treeview_name_string):
     curItem = treeview_name.focus()
     treeview_name.item(curItem)
     selected_items =treeview_name.item(curItem)
-    if treeview_name_string=='purchase_tree_view' or 'item_tree_view' or 'report_tree_view':
+    if treeview_name_string=='todays_tree_view':
         for key, value in selected_items.items():
             if key == 'values':
-                selected_treeview_item=value[0]
+                selected_treeview_item=value[1]
                 return selected_treeview_item
 
+def total_lbl_update():
+    try:
+        con=sqlite3.connect("my_data.sql")
+        cur=con.cursor()
+        cur.execute("SELECT SUM(income)-SUM(expense) FROM temp_daily_spends")
+        total=cur.fetchall()
+        if str(total[0][0])=='None':
+            todays_total_lbl.configure(text="0000.00")
+        else:
+            todays_total_lbl.configure(text="{:.2f}".format(float(total[0][0])))
+        con.close()
+    except sqlite3.Error as err:
+        print("Error - ",err)
+        con.close()
+
+    
 
 def menu_frame_obj():
     global login_btn,add_btn,dealer_btn,update_btn,explore_btn
@@ -177,7 +215,7 @@ def login_obj():
 
 def todays_budget():
     print()
-    global todays_budget_frame
+    global todays_budget_frame,todays_total_lbl
     todays_budget_frame= Frame(root,width=1670,height=1060,bg=frame_color)
     todays_budget_frame.grid(row=0,column=1)
     todays_budget_frame.propagate(0)
@@ -216,6 +254,23 @@ def todays_budget():
     add_btn=Button(todays_budget_frame,fg=element_color,bg=frame_button_color,text="Add",width = 21,border=4,command=lambda:[add_data()])
     add_btn.place(relx = 0.374, rely = 0.198, anchor = NW)
 
+    #Purchase Delete Button
+    todays_delete_btn=Button(todays_budget_frame,fg=element_color,bg=frame_button_color,text="Delete",width = 21,border=4,command=lambda:[delete_todays_item()])
+    todays_delete_btn.place(relx = 0.03, rely = 0.575, anchor = NW)
+
+    #clear all button
+    todays_clearall_btn=Button(todays_budget_frame,fg=element_color,bg=frame_button_color,text="clear All",width = 21,border=4,command=lambda:[clear_tv(todays_tree_view)])
+    todays_clearall_btn.place(relx = 0.13, rely = 0.575, anchor = NW)
+
+    todays_save_btn=Button(todays_budget_frame,fg=element_color,bg=frame_button_color,text="Save",width = 16,height=2,border=4,command=lambda:[save_my_data_to_database()])
+    todays_save_btn.place(relx = 0.38, rely = 0.532, anchor = NW)
+    
+    #Purchase Total
+    todays_total_lbl0=Label(todays_budget_frame,text="Bal: ",font=book_antiqua_size18,bg=frame_color,fg=element_color)
+    todays_total_lbl0.place(relx = 0.24, rely = 0.574, anchor = NW)
+    todays_total_lbl=Label(todays_budget_frame,text="0000.00",font=book_antiqua_size18,bg=frame_color,fg=element_color)
+    todays_total_lbl.place(relx = 0.3, rely = 0.574, anchor = NW)
+
     def add_data():
         particulars=particulars_tb.get()
         income=float(income_tb.get())
@@ -223,32 +278,61 @@ def todays_budget():
         try:
             con=sqlite3.connect("my_data.sql")
             cur=con.cursor()
-            cur.execute("select particulars from temp_daily_spends")
-            particulars_1=cur.fetchall()
-
-            '''ON CONFLICT(particulars) DO UPDATE SET income=income+{:.2f},expense=expense+{:.2f},particulars='{}'''
-            
-            cur.execute("CREATE TABLE IF NOT EXISTS temp_daily_spends(date dates NOT NULL,particulars varchar2(25),income decimal,expense decimal)")
-            cur.execute("INSERT INTO temp_daily_spends VALUES('{}','{}',{:.2f},{:.2f})".format(datesorted,particulars,float(income),float(expense)))
-
-            particulars_array=[]
-            particulars_array.insert(len(particulars_array),particulars)
-            print(particulars_array)
-            
+            cur.execute("CREATE TABLE IF NOT EXISTS temp_daily_spends(date dates NOT NULL,particulars varchar2(25) PRIMARY KEY,income decimal,expense decimal)")
+            cur.execute("INSERT INTO temp_daily_spends(date,particulars,income,expense) VALUES (?, ?, ?, ?) ON CONFLICT(particulars) DO UPDATE SET income=income+?, expense=expense+?, particulars=?", (datesorted, particulars_tb.get(), float(income), float(expense), float(income), float(expense), particulars_tb.get()))
+            con.commit()
             cur.execute("SELECT date,particulars,income,expense from temp_daily_spends ORDER BY expense ASC")
             row=cur.fetchall()
-
             clear_all(todays_tree_view)
+            con.commit()
             for i in row:
                 todays_tree_view.insert("", 'end', text ="L1",values =(i[0],i[1],i[2],i[3]))
-            '''cur.execute("creat FROM temp_daily_spends")
-            total=cur.fetchall()
-            todays_tree_view.configure(text="{:.2f}".format(float(total[0][0])))'''
-            con.commit()
             con.close()
         except sqlite3.Error as err:
             print("Error - ",err)
             con.close()
+        total_lbl_update()
+
+
+    def delete_todays_item():
+        selected_treeview_item=selected_item_from_treeview(todays_tree_view,'todays_tree_view')
+        temp=messagebox.askquestion('Delete Product', 'Are you sure you want to Delete')
+        if temp=='yes':
+            try:
+                con=sqlite3.connect("my_data.sql")
+                cur=con.cursor()
+                cur.execute("DELETE FROM temp_daily_spends where particulars='{}'".format(str(selected_treeview_item)))
+                con.commit()
+                cur.execute("SELECT * FROM temp_daily_spends ORDER BY expense ASC")
+                row=cur.fetchall()
+                clear_all(todays_tree_view)
+                for i in row:
+                    todays_tree_view.insert("", 'end', text ="L1",values =(i[0],i[1],i[2],i[3]))
+                con.commit()
+                total_lbl_update()
+                con.close()
+            except sqlite3.Error as err:
+                print("Error - ",err)
+
+    def save_my_data_to_database():
+            try:
+                con=sqlite3.connect("my_data.sql")
+                cur=con.cursor()
+                cur.execute("CREATE TABLE IF NOT EXISTS daily_spends(date dates NOT NULL,particulars varchar2(25) PRIMARY KEY,income decimal,expense decimal,total decimal)")
+                #cur.execute("CREATE TABLE IF NOT EXISTS item_purchase_details(item_id int(10) PRIMARY KEY NOT NULL,date date NOT NULL,item_name varchar(25) NOT NULL,purchase_quantity REAL NOT NULL,buying_price REAL NOT NULL,total_price REAL NOT NULL,selling_price REAL,item_category varchar(15))")
+                cur.execute("SELECT * from temp_daily_spends")
+                row=cur.fetchall()
+                for i in row:
+                    cur.execute("INSERT INTO daily_spends(date,particulars,income,expense) VALUES (?, ?, ?, ?) ON CONFLICT(particulars) DO UPDATE SET income=income+?, expense=expense+?, particulars=?", (i[0], i[1], i[2], i[3], i[2], i[3], i[1]))
+                cur.execute("UPDATE daily_spends SET total=(SELECT SUM(income)-SUM(expense) FROM daily_spends WHERE date=?) WHERE date=?", (row[0][0], row[0][0]))
+                messagebox.showinfo(title='Saved', message="Products Added to inventory")
+                con.commit()
+                con.close()
+                clear_tv(todays_tree_view)
+            except sqlite3.Error as err:
+                print("Error - ",err)
+                messagebox.showerror(title='Error', message="Data not Save")
+                con.close()
 
     #treeview element
     todays_tree_view= Treeview(todays_budget_frame,selectmode='browse',height=17)
@@ -280,7 +364,7 @@ def todays_budget():
     con=sqlite3.connect("my_data.sql")
     cur=con.cursor()
     cur.execute("drop table IF EXISTS temp_daily_spends")
-    cur.execute("CREATE TABLE IF NOT EXISTS temp_daily_spends(date dates NOT NULL,particulars varchar2(25),income decimal,expense decimal)")
+    cur.execute("CREATE TABLE IF NOT EXISTS temp_daily_spends(date dates NOT NULL,particulars varchar2(25) PRIMARY KEY,income decimal,expense decimal)")
     con.commit()
     con.close()
 
