@@ -199,11 +199,18 @@ def todays_budget():
     particulars_tb.bind('<Key>',validation_25charecters)
     particulars_tb.bind('<KeyRelease>',lower_case2)
 
-    income_tb=Entry(todays_budget_frame,fg=element_color,bg=entry_box_color,font=arial,border=4,width=10)
+    income_tb=Entry(todays_budget_frame,fg=element_color,bg=entry_box_color,font=arial,border=4,width=10,state='normal')
+    income_tb.insert(0,0)
+    income_tb.configure(state='disabled')
     income_tb.place(relx = 0.256, rely = 0.198, anchor = NW)
+    income_btn=Button(todays_budget_frame,fg=element_color,bg=frame_button_color,text="Income",width = 9,border=4,command=lambda:[income_btn.configure(state='disabled'),expense_tb.delete(0,END),expense_tb.insert(0,0),expense_tb.configure(state='disabled'),expense_btn.configure(state='normal'),income_tb.configure(state='normal')])
+    income_btn.place(relx = 0.256, rely = 0.160, anchor = NW)
 
-    expense_tb=Entry(todays_budget_frame,fg=element_color,bg=entry_box_color,font=arial,border=4,width=10)
+    expense_tb=Entry(todays_budget_frame,fg=element_color,bg=entry_box_color,font=arial,border=4,width=10,state='normal')
+    expense_tb.insert(0,0)
     expense_tb.place(relx = 0.315, rely = 0.198, anchor = NW)
+    expense_btn=Button(todays_budget_frame,fg=element_color,bg=frame_button_color,state='disabled',text="Expense",width = 9,border=4,command=lambda:[expense_btn.configure(state='disabled'),income_tb.delete(0,END),income_tb.insert(0,0),income_tb.configure(state='disabled'),income_btn.configure(state='normal'),expense_tb.configure(state='normal')])
+    expense_btn.place(relx = 0.315, rely = 0.160, anchor = NW)
 
     #Purchase Add Button
     add_btn=Button(todays_budget_frame,fg=element_color,bg=frame_button_color,text="Add",width = 21,border=4,command=lambda:[add_data()])
@@ -216,19 +223,27 @@ def todays_budget():
         try:
             con=sqlite3.connect("my_data.sql")
             cur=con.cursor()
-            ################################################################################cur.execute("select particul")
-            cur.execute("CREATE TABLE IF NOT EXISTS temp_daily_spends(date dates NOT NULL,particulars varchar2(25),income decimal,expense decimal)")
-            cur.execute("INSERT INTO temp_daily_spends VALUES('{}','{}',{:.2f},{:.2f}) ON CONFLICT(particulars) DO UPDATE SET income=income+{:.2f},expense=expense+{:.2f},particulars='{}'".format(datesorted,particulars,float(income),float(expense),float(income),float(expense),particulars))
+            cur.execute("select particulars from temp_daily_spends")
+            particulars_1=cur.fetchall()
 
-            cur.execute("SELECT date,particulars,income,expense ORDER BY expense ASC")
+            '''ON CONFLICT(particulars) DO UPDATE SET income=income+{:.2f},expense=expense+{:.2f},particulars='{}'''
+            
+            cur.execute("CREATE TABLE IF NOT EXISTS temp_daily_spends(date dates NOT NULL,particulars varchar2(25),income decimal,expense decimal)")
+            cur.execute("INSERT INTO temp_daily_spends VALUES('{}','{}',{:.2f},{:.2f})".format(datesorted,particulars,float(income),float(expense)))
+
+            particulars_array=[]
+            particulars_array.insert(len(particulars_array),particulars)
+            print(particulars_array)
+            
+            cur.execute("SELECT date,particulars,income,expense from temp_daily_spends ORDER BY expense ASC")
             row=cur.fetchall()
 
             clear_all(todays_tree_view)
             for i in row:
                 todays_tree_view.insert("", 'end', text ="L1",values =(i[0],i[1],i[2],i[3]))
-            cur.execute("SELECT SUM(income)-SUM(expense) FROM temp_item_purchase_details")
+            '''cur.execute("creat FROM temp_daily_spends")
             total=cur.fetchall()
-            todays_tree_view.configure(text="{:.2f}".format(float(total[0][0])))
+            todays_tree_view.configure(text="{:.2f}".format(float(total[0][0])))'''
             con.commit()
             con.close()
         except sqlite3.Error as err:
@@ -259,12 +274,12 @@ def todays_budget():
     #assigning heading name
     todays_tree_view.heading("1",text="Date")
     todays_tree_view.heading("2",text="Particulars")
-    todays_tree_view.heading("3",text="Incoome")
+    todays_tree_view.heading("3",text="Income")
     todays_tree_view.heading("4",text="Expense")
 
     con=sqlite3.connect("my_data.sql")
     cur=con.cursor()
-    cur.execute("drop table temp_daily_spends")
+    cur.execute("drop table IF EXISTS temp_daily_spends")
     cur.execute("CREATE TABLE IF NOT EXISTS temp_daily_spends(date dates NOT NULL,particulars varchar2(25),income decimal,expense decimal)")
     con.commit()
     con.close()
