@@ -98,7 +98,8 @@ def clear_all(treeview_name):
         for item in treeview_name.get_children():
             treeview_name.delete(item)
     
-def clear_tv(treeview_name):
+def clear_tv(label_name,treeview_name):
+    label=label_name
     temp=messagebox.askquestion('Delete Product', 'Are you sure you want to Delete')
     if temp=='yes':
         for item in treeview_name.get_children():
@@ -112,9 +113,9 @@ def clear_tv(treeview_name):
             cur.execute("SELECT SUM(income)-SUM(expense) FROM temp_daily_spends")
             total=cur.fetchall()
             if str(total[0][0])=='None':
-                todays_total_lbl.configure(text="0000.00")
+                label.configure(text="0000.00")
             else:
-                todays_total_lbl.configure(text="{:.2f}".format(float(total[0][0])))
+                label.configure(text="{:.2f}".format(float(total[0][0])))
             con.close()
         except sqlite3.Error as err:
             print("Error - ",err)
@@ -124,22 +125,27 @@ def selected_item_from_treeview(treeview_name,treeview_name_string):
     curItem = treeview_name.focus()
     treeview_name.item(curItem)
     selected_items =treeview_name.item(curItem)
-    if treeview_name_string=='todays_tree_view':
+    if treeview_name_string=='todays_tree_view' or 'update_tree_view':
         for key, value in selected_items.items():
             if key == 'values':
                 selected_treeview_item=value[1]
                 return selected_treeview_item
 
-def total_lbl_update():
+def total_lbl_update(label1,frame_name):
+    label=label1
     try:
         con=sqlite3.connect("my_data.sql")
         cur=con.cursor()
-        cur.execute("SELECT SUM(income)-SUM(expense) FROM temp_daily_spends")
-        total=cur.fetchall()
+        if frame_name=='todays_budget_frame':
+            cur.execute("SELECT SUM(income)-SUM(expense) FROM temp_daily_spends")
+            total=cur.fetchall()
+        elif frame_name=='update_budget_frame':
+            cur.execute("SELECT SUM(income)-SUM(expense) FROM daily_spends")
+            total=cur.fetchall()
         if str(total[0][0])=='None':
-            todays_total_lbl.configure(text="0000.00")
+            label.configure(text="0000.00")
         else:
-            todays_total_lbl.configure(text="{:.2f}".format(float(total[0][0])))
+            label.configure(text="{:.2f}".format(float(total[0][0])))
         con.close()
     except sqlite3.Error as err:
         print("Error - ",err)
@@ -151,8 +157,8 @@ def menu_frame_obj():
     global login_btn,add_btn,dealer_btn,update_btn,explore_btn
     login_btn=Button(menu_frame,text="Login",width = 25,height=menu_button_height,fg=element_color,bg=menu_button_color,command=lambda:[login_obj()])
     add_btn=Button(menu_frame,text="Todays Budget",width = 25,state='normal',fg=element_color,height=menu_button_height,bg=menu_button_color,command=lambda:[todays_budget()])
-    update_btn=Button(menu_frame,text="Update Budget",width = 25,fg=element_color,state='disabled',height=menu_button_height,bg=menu_button_color,command=lambda:[()])
-    explore_btn=Button(menu_frame,text="Budget History",width = 25,fg=element_color,state='disabled',height=menu_button_height,bg=menu_button_color,command=lambda:[])
+    update_btn=Button(menu_frame,text="Update Budget",width = 25,fg=element_color,state='normal',height=menu_button_height,bg=menu_button_color,command=lambda:[update_budget()])
+    explore_btn=Button(menu_frame,text="Budget History",width = 25,fg=element_color,state='normal',height=menu_button_height,bg=menu_button_color,command=lambda:[])
 
     def place_menu(click):
         y=0.4+click
@@ -214,7 +220,6 @@ def login_obj():
             messagebox.showerror(title='Error', message="Wrong Password")
 
 def todays_budget():
-    print()
     global todays_budget_frame,todays_total_lbl
     todays_budget_frame= Frame(root,width=1670,height=1060,bg=frame_color)
     todays_budget_frame.grid(row=0,column=1)
@@ -237,29 +242,33 @@ def todays_budget():
     particulars_tb.bind('<Key>',validation_25charecters)
     particulars_tb.bind('<KeyRelease>',lower_case2)
 
+    def insert0(event):
+        income_tb.delete(0,END)
+        income_tb.insert(0,0)
+    def insert1(event):
+        expense_tb.delete(0,END)
+        expense_tb.insert(0,0)
+
     income_tb=Entry(todays_budget_frame,fg=element_color,bg=entry_box_color,font=arial,border=4,width=10,state='normal')
     income_tb.insert(0,0)
-    income_tb.configure(state='disabled')
     income_tb.place(relx = 0.256, rely = 0.198, anchor = NW)
-    income_btn=Button(todays_budget_frame,fg=element_color,bg=frame_button_color,text="Income",width = 9,border=4,command=lambda:[income_btn.configure(state='disabled'),expense_tb.delete(0,END),expense_tb.insert(0,0),expense_tb.configure(state='disabled'),expense_btn.configure(state='normal'),income_tb.configure(state='normal')])
-    income_btn.place(relx = 0.256, rely = 0.160, anchor = NW)
+    income_tb.bind('<FocusOut>', insert0)
 
     expense_tb=Entry(todays_budget_frame,fg=element_color,bg=entry_box_color,font=arial,border=4,width=10,state='normal')
     expense_tb.insert(0,0)
     expense_tb.place(relx = 0.315, rely = 0.198, anchor = NW)
-    expense_btn=Button(todays_budget_frame,fg=element_color,bg=frame_button_color,state='disabled',text="Expense",width = 9,border=4,command=lambda:[expense_btn.configure(state='disabled'),income_tb.delete(0,END),income_tb.insert(0,0),income_tb.configure(state='disabled'),income_btn.configure(state='normal'),expense_tb.configure(state='normal')])
-    expense_btn.place(relx = 0.315, rely = 0.160, anchor = NW)
+    expense_tb.bind('<FocusOut>', insert1)
 
     #Purchase Add Button
     add_btn=Button(todays_budget_frame,fg=element_color,bg=frame_button_color,text="Add",width = 21,border=4,command=lambda:[add_data()])
     add_btn.place(relx = 0.374, rely = 0.198, anchor = NW)
 
     #Purchase Delete Button
-    todays_delete_btn=Button(todays_budget_frame,fg=element_color,bg=frame_button_color,text="Delete",width = 21,border=4,command=lambda:[delete_todays_item()])
+    todays_delete_btn=Button(todays_budget_frame,fg=element_color,bg=frame_button_color,text="Delete",width = 21,border=4,command=lambda:[delete_update_item()])
     todays_delete_btn.place(relx = 0.03, rely = 0.575, anchor = NW)
 
     #clear all button
-    todays_clearall_btn=Button(todays_budget_frame,fg=element_color,bg=frame_button_color,text="clear All",width = 21,border=4,command=lambda:[clear_tv(todays_tree_view)])
+    todays_clearall_btn=Button(todays_budget_frame,fg=element_color,bg=frame_button_color,text="clear All",width = 21,border=4,command=lambda:[clear_tv(todays_total_lbl,update_tree_view)])
     todays_clearall_btn.place(relx = 0.13, rely = 0.575, anchor = NW)
 
     todays_save_btn=Button(todays_budget_frame,fg=element_color,bg=frame_button_color,text="Save",width = 16,height=2,border=4,command=lambda:[save_my_data_to_database()])
@@ -267,9 +276,10 @@ def todays_budget():
     
     #Purchase Total
     todays_total_lbl0=Label(todays_budget_frame,text="Bal: ",font=book_antiqua_size18,bg=frame_color,fg=element_color)
-    todays_total_lbl0.place(relx = 0.24, rely = 0.574, anchor = NW)
+    todays_total_lbl0.place(relx = 0.26, rely = 0.574, anchor = NW)
     todays_total_lbl=Label(todays_budget_frame,text="0000.00",font=book_antiqua_size18,bg=frame_color,fg=element_color)
     todays_total_lbl.place(relx = 0.3, rely = 0.574, anchor = NW)
+
 
     def add_data():
         particulars=particulars_tb.get()
@@ -283,19 +293,19 @@ def todays_budget():
             con.commit()
             cur.execute("SELECT date,particulars,income,expense from temp_daily_spends ORDER BY expense ASC")
             row=cur.fetchall()
-            clear_all(todays_tree_view)
+            clear_all(update_tree_view)
             con.commit()
             for i in row:
-                todays_tree_view.insert("", 'end', text ="L1",values =(i[0],i[1],i[2],i[3]))
+                update_tree_view.insert("", 'end', text ="L1",values =(i[0],i[1],i[2],i[3]))
             con.close()
         except sqlite3.Error as err:
             print("Error - ",err)
             con.close()
-        total_lbl_update()
+        total_lbl_update(update_total_lbl,'update_budget_frame')
 
 
-    def delete_todays_item():
-        selected_treeview_item=selected_item_from_treeview(todays_tree_view,'todays_tree_view')
+    def delete_update_item():
+        selected_treeview_item=selected_item_from_treeview(update_tree_view,'update_tree_view')
         temp=messagebox.askquestion('Delete Product', 'Are you sure you want to Delete')
         if temp=='yes':
             try:
@@ -305,11 +315,11 @@ def todays_budget():
                 con.commit()
                 cur.execute("SELECT * FROM temp_daily_spends ORDER BY expense ASC")
                 row=cur.fetchall()
-                clear_all(todays_tree_view)
+                clear_all(update_tree_view)
                 for i in row:
-                    todays_tree_view.insert("", 'end', text ="L1",values =(i[0],i[1],i[2],i[3]))
+                    update_tree_view.insert("", 'end', text ="L1",values =(i[0],i[1],i[2],i[3]))
                 con.commit()
-                total_lbl_update()
+                total_lbl_update(update_total_lbl,'update_budget_frame')
                 con.close()
             except sqlite3.Error as err:
                 print("Error - ",err)
@@ -328,15 +338,15 @@ def todays_budget():
                 messagebox.showinfo(title='Saved', message="Products Added to inventory")
                 con.commit()
                 con.close()
-                clear_tv(todays_tree_view)
+                clear_tv(update_total_lbl,update_tree_view)
             except sqlite3.Error as err:
                 print("Error - ",err)
                 messagebox.showerror(title='Error', message="Data not Save")
                 con.close()
 
     #treeview element
-    todays_tree_view= Treeview(todays_budget_frame,selectmode='browse',height=17)
-    todays_tree_view.place(relx = 0.03, rely = 0.225, anchor = NW)
+    update_tree_view= Treeview(todays_budget_frame,selectmode='browse',height=17)
+    update_tree_view.place(relx = 0.03, rely = 0.225, anchor = NW)
 
     #verticle scrollbar
     #vertical_scrollbar=Scrollbar(billing_frame,orient="vertical",command=tree_view.yview)
@@ -344,22 +354,22 @@ def todays_budget():
     #tree_view.configure(xscrollcommand=vertical_scrollbar.set)
 
     #Definning number of columns
-    todays_tree_view["columns"]=("1","2","3","4")
+    update_tree_view["columns"]=("1","2","3","4")
 
     #defining heading
-    todays_tree_view["show"]='headings'
+    update_tree_view["show"]='headings'
 
     #modifying the size of the columns
-    todays_tree_view.column("1",width=118)
-    todays_tree_view.column("2",width=260)
-    todays_tree_view.column("3",width=100)
-    todays_tree_view.column("4",width=98)
+    update_tree_view.column("1",width=118)
+    update_tree_view.column("2",width=260)
+    update_tree_view.column("3",width=100)
+    update_tree_view.column("4",width=98)
 
     #assigning heading name
-    todays_tree_view.heading("1",text="Date")
-    todays_tree_view.heading("2",text="Particulars")
-    todays_tree_view.heading("3",text="Income")
-    todays_tree_view.heading("4",text="Expense")
+    update_tree_view.heading("1",text="Date")
+    update_tree_view.heading("2",text="Particulars")
+    update_tree_view.heading("3",text="Income")
+    update_tree_view.heading("4",text="Expense")
 
     con=sqlite3.connect("my_data.sql")
     cur=con.cursor()
@@ -367,6 +377,235 @@ def todays_budget():
     cur.execute("CREATE TABLE IF NOT EXISTS temp_daily_spends(date dates NOT NULL,particulars varchar2(25) PRIMARY KEY,income decimal,expense decimal)")
     con.commit()
     con.close()
+
+def update_budget():
+    global update_budget_frame,update_total_lbl
+    update_budget_frame= Frame(root,width=1670,height=1060,bg=frame_color)
+    update_budget_frame.grid(row=0,column=1)
+    update_budget_frame.propagate(0)
+
+    update_budget_lbl=Label(update_budget_frame,text="Update Budget",font=book_antiqua_size18,bg=frame_color,fg=element_color)
+    update_budget_lbl.place(relx = 0.4, rely = 0.008, anchor = NW)
+
+    #Objects
+    date_tb=Entry(update_budget_frame,fg=element_color,bg=entry_box_color,font=arial,width=13)
+    date_tb.place(relx = 0.03, rely = 0.202, anchor = NW)
+    date_tb.insert(0,datesorted)
+
+    def lower_case2(event):
+        particulars.set(particulars.get().lower())
+    particulars= StringVar()
+    particulars_tb=Entry(update_budget_frame,fg=element_color,bg=entry_box_color,font=arial,border=4,width=28,textvariable=particulars)
+    particulars_tb.place(relx = 0.10, rely = 0.198, anchor = NW)
+    particulars_tb.bind('<Key>',validation_25charecters)
+    particulars_tb.bind('<KeyRelease>',lower_case2)
+
+    def insert0(event):
+        income_tb.delete(0,END)
+        income_tb.insert(0,0)
+    def insert1(event):
+        expense_tb.delete(0,END)
+        expense_tb.insert(0,0)
+
+    item={}
+    def Scankey2(event):
+        #val stores the selected value
+        val = event.widget.get()
+        if len(val)==1 or len(val)==0:
+            clear_all(update_tree_view)
+            item_info()
+        else:
+            name_data = {}
+            for key,value in item.items():
+                if val.lower() in key.lower():
+                    name_data[key]=value
+                    Update2(name_data)
+
+    def Update2(data):
+        for item in update_tree_view.get_children():
+            update_tree_view.delete(item)
+        for key, value in data.items():
+            update_tree_view.insert("",'end',text="L1",values=(value[0], key,value[1],value[2],value[3]))
+
+    #ERORRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR
+    def item_info():
+        try:
+            con=sqlite3.connect("my_data.sql")
+            cur=con.cursor()
+            cur.execute("SELECT * from daily_spends ORDER BY date ASC")
+            row=cur.fetchall()
+            for i in row:
+                item[i[1]]=[i[0],i[1],i[2],i[3]]
+                update_tree_view.insert("", 'end', text ="L1", values=(i[0],i[1],i[2],i[3]))
+            con.close()
+        except sqlite3.Error as err:
+            print("Error - ",err)
+    item_info()
+    particulars_tb.bind('<Key>', Scankey2)
+    #ERORRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRS
+
+    income_tb=Entry(update_budget_frame,fg=element_color,bg=entry_box_color,font=arial,border=4,width=10,state='normal')
+    income_tb.insert(0,0)
+    income_tb.place(relx = 0.256, rely = 0.198, anchor = NW)
+    income_tb.bind('<FocusOut>', insert0)
+
+    expense_tb=Entry(update_budget_frame,fg=element_color,bg=entry_box_color,font=arial,border=4,width=10,state='normal')
+    expense_tb.insert(0,0)
+    expense_tb.place(relx = 0.315, rely = 0.198, anchor = NW)
+    expense_tb.bind('<FocusOut>', insert1)
+
+
+    #Purchase Add Button
+    add_btn=Button(update_budget_frame,fg=element_color,bg=frame_button_color,text="Add",width = 21,border=4,command=lambda:[add_data()])
+    add_btn.place(relx = 0.374, rely = 0.198, anchor = NW)
+
+    #Purchase Delete Button
+    update_delete_btn=Button(update_budget_frame,fg=element_color,bg=frame_button_color,text="Delete",width = 21,border=4,command=lambda:[delete_update_item()])
+    update_delete_btn.place(relx = 0.03, rely = 0.575, anchor = NW)
+
+    #clear all button
+    update_clearall_btn=Button(update_budget_frame,fg=element_color,bg=frame_button_color,text="clear All",width = 21,border=4,command=lambda:[clear_tv(update_total_lbl,update_tree_view)])
+    update_clearall_btn.place(relx = 0.13, rely = 0.575, anchor = NW)
+
+    update_save_btn=Button(update_budget_frame,fg=element_color,bg=frame_button_color,text="Save",width = 16,height=2,border=4,command=lambda:[save_my_data_to_database()])
+    update_save_btn.place(relx = 0.38, rely = 0.532, anchor = NW)
+    
+    #Purchase Total
+    update_total_lbl0=Label(update_budget_frame,text="Bal: ",font=book_antiqua_size18,bg=frame_color,fg=element_color)
+    update_total_lbl0.place(relx = 0.26, rely = 0.574, anchor = NW)
+    update_total_lbl=Label(update_budget_frame,text="0000.00",font=book_antiqua_size18,bg=frame_color,fg=element_color)
+    update_total_lbl.place(relx = 0.3, rely = 0.574, anchor = NW)
+
+    #from date
+    report_date_lbl=Label(update_budget_frame,text="From",font=book_antiqua,bg=frame_color,fg=element_color)
+    report_date_lbl.place(relx = 0.04, rely = 0.09, anchor = NW)
+    
+    today = date.today()
+    report_from_date_tb = DateEntry(update_budget_frame, width= 16,height=0, background= "grey", foreground= "white",bd=4, maxdate=today)
+    report_from_date_tb.place(relx = 0.07, rely = 0.09, anchor = NW)
+
+    #to date
+    report_date_lbl=Label(update_budget_frame,text="To",font=book_antiqua,bg=frame_color,fg=element_color)
+    report_date_lbl.place(relx = 0.16, rely = 0.09, anchor = NW)
+    
+    report_to_date_tb = DateEntry(update_budget_frame, width= 16,height=0, background= "grey", foreground= "white",bd=4, maxdate=today)
+    report_to_date_tb.place(relx = 0.177, rely = 0.09, anchor = NW)
+
+    #Search btn
+    report_filter_btn=Button(update_budget_frame,fg=element_color,bg=frame_button_color,text="Filter",width = 16,border=4,command=lambda:[date_filter()])
+    report_filter_btn.place(relx = 0.27, rely = 0.09, anchor = NW)
+
+    #Date bug########################
+    def date_filter():
+        clear_all(update_tree_view)
+        try:
+            con=sqlite3.connect("my_data.sql")
+            cur=con.cursor()
+            from_date=report_from_date_tb.get_date().strftime("%d-%m-%Y")
+            print(from_date)
+            to_date=report_to_date_tb.get_date().strftime("%d-%m-%Y")
+            print(to_date)
+            cur.execute("SELECT * FROM daily_spends WHERE date BETWEEN ? AND ? ORDER BY date",(from_date,to_date))
+            report=cur.fetchall()
+            for i in report:
+                update_tree_view.insert("", 'end', text ="L1",values =(i[0],i[1],i[2],i[3]))
+            con.close()
+        except sqlite3.Error as err:
+            print("Error - ",err)
+
+    def add_data():
+        particulars=particulars_tb.get()
+        income=float(income_tb.get())
+        expense=float(expense_tb.get())
+        try:
+            con=sqlite3.connect("my_data.sql")
+            cur=con.cursor()
+            cur.execute("CREATE TABLE IF NOT EXISTS daily_spends(date dates NOT NULL,particulars varchar2(25) PRIMARY KEY,income decimal,expense decimal)")
+            cur.execute("INSERT INTO daily_spends(date,particulars,income,expense) VALUES (?, ?, ?, ?) ON CONFLICT(particulars) DO UPDATE SET income=income+?, expense=expense+?, particulars=?", (date_tb.get(), particulars_tb.get(), float(income), float(expense), float(income), float(expense), particulars_tb.get()))
+            con.commit()
+            cur.execute("SELECT date,particulars,income,expense from daily_spends ORDER BY expense ASC")
+            row=cur.fetchall()
+            clear_all(update_tree_view)
+            con.commit()
+            for i in row:
+                update_tree_view.insert("", 'end', text ="L1",values =(i[0],i[1],i[2],i[3]))
+            con.close()
+        except sqlite3.Error as err:
+            print("Error - ",err)
+            con.close()
+        total_lbl_update(update_total_lbl,'update_budget_frame')
+        
+
+
+    def delete_update_item():
+        selected_treeview_item=selected_item_from_treeview(update_tree_view,'update_tree_view')
+        temp=messagebox.askquestion('Delete Product', 'Are you sure you want to Delete')
+        if temp=='yes':
+            try:
+                con=sqlite3.connect("my_data.sql")
+                cur=con.cursor()
+                cur.execute("DELETE FROM daily_spends where particulars='{}'".format(str(selected_treeview_item)))
+                con.commit()
+                cur.execute("SELECT * FROM daily_spends ORDER BY expense ASC")
+                row=cur.fetchall()
+                clear_all(update_tree_view)
+                for i in row:
+                    update_tree_view.insert("", 'end', text ="L1",values =(i[0],i[1],i[2],i[3]))
+                con.commit()
+                total_lbl_update(update_total_lbl,'update_budget_frame')
+                con.close()
+            except sqlite3.Error as err:
+                print("Error - ",err)
+
+    def save_my_data_to_database():
+            try:
+                con=sqlite3.connect("my_data.sql")
+                cur=con.cursor()
+                cur.execute("CREATE TABLE IF NOT EXISTS daily_spends(date dates NOT NULL,particulars varchar2(25) PRIMARY KEY,income decimal,expense decimal,total decimal)")
+                #cur.execute("CREATE TABLE IF NOT EXISTS item_purchase_details(item_id int(10) PRIMARY KEY NOT NULL,date date NOT NULL,item_name varchar(25) NOT NULL,purchase_quantity REAL NOT NULL,buying_price REAL NOT NULL,total_price REAL NOT NULL,selling_price REAL,item_category varchar(15))")
+                cur.execute("SELECT * from daily_spends")
+                row=cur.fetchall()
+                for i in row:
+                    cur.execute("INSERT INTO daily_spends(date,particulars,income,expense) VALUES (?, ?, ?, ?) ON CONFLICT(particulars) DO UPDATE SET income=income+?, expense=expense+?, particulars=?", (i[0], i[1], i[2], i[3], i[2], i[3], i[1]))
+                cur.execute("UPDATE daily_spends SET total=(SELECT SUM(income)-SUM(expense) FROM daily_spends WHERE date=?) WHERE date=?", (row[0][0], row[0][0]))
+                messagebox.showinfo(title='Saved', message="Products Added to inventory")
+                con.commit()
+                con.close()
+                clear_tv(update_total_lbl,update_tree_view)
+            except sqlite3.Error as err:
+                print("Error - ",err)
+                messagebox.showerror(title='Error', message="Data not Save")
+                con.close()
+
+    #treeview element
+    update_tree_view= Treeview(update_budget_frame,selectmode='browse',height=17)
+    update_tree_view.place(relx = 0.03, rely = 0.225, anchor = NW)
+
+    #verticle scrollbar
+    #vertical_scrollbar=Scrollbar(billing_frame,orient="vertical",command=tree_view.yview)
+    #vertical_scrollbar.place(relx = 0.03, rely = 0.3, anchor = NW)
+    #tree_view.configure(xscrollcommand=vertical_scrollbar.set)
+
+    #Definning number of columns
+    update_tree_view["columns"]=("1","2","3","4")
+
+    #defining heading
+    update_tree_view["show"]='headings'
+
+    #modifying the size of the columns
+    update_tree_view.column("1",width=118)
+    update_tree_view.column("2",width=260)
+    update_tree_view.column("3",width=100)
+    update_tree_view.column("4",width=98)
+
+    #assigning heading name
+    update_tree_view.heading("1",text="Date")
+    update_tree_view.heading("2",text="Particulars")
+    update_tree_view.heading("3",text="Income")
+    update_tree_view.heading("4",text="Expense")
+
+    
+    
 
     
 
