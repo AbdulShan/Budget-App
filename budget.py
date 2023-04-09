@@ -1,11 +1,9 @@
 #All necessary Packages
-from tkinter import messagebox, ttk, Button, Frame, Label, Scrollbar, Toplevel, PhotoImage, BOTTOM, LEFT, RIGHT, CENTER, X, Y, Tk, Entry, NW, END, Text, StringVar
+from tkinter import messagebox, Button, Frame, Label, Toplevel, CENTER, Tk, Entry, NW, END, StringVar
 from tkinter.ttk import Style, Treeview
 from tkcalendar import DateEntry
 import datetime
-import sqlite3 
-from json import dumps, loads
-
+import sqlite3
 #Styles
 book_antiqua=("Helvetica Neue Light",12,"normal")
 arial=('Arial', 12)
@@ -19,34 +17,26 @@ tree_view_color_bg='#242729'
 tree_view_color_fg='#242729'
 selection_color='darkblue'
 menu_button_height=4
-
 #date and time, sorting date into dd/mm/yyyy
 date=datetime.date.today()
 datesorted=date.strftime("%d-%m-%Y")
-
 #Validation
 def validation_10charecters(event):
     val = event.widget.get()
     if len(val)>9:
         event.widget.delete(9)
-
 def validation_25charecters(event):
     val = event.widget.get()
     if len(val)>24:
         event.widget.delete(24)
-
 #Tkinter window configs
 if "__main__"==__name__:
     root=Tk()
     root.title("Billing App")
-    #get your Windows width/height, set size to full window
     width = root.winfo_screenwidth()
     height = root.winfo_screenheight()
     root.geometry("%dx%d" % (width, height))
-    #wont allow to resize window, and full screen when opening
     root.resizable(False,False)
-    #root.state('zoomed')
-
 def openeditwindow():
     global editwindow
     editwindow = Toplevel(root)
@@ -54,7 +44,6 @@ def openeditwindow():
     editwindow.title("Edit")
     editwindow.geometry('%dx%d+%d+%d' % (332, 140, 800, 400))
     editwindow.resizable(False,False)
-
 menu_frame= Frame(root,bg="#161719",width=250,height=1060)
 menu_frame.grid(row=0,column=0)
 menu_frame.propagate(0)
@@ -62,11 +51,9 @@ style = Style(root)
 style.theme_use("clam")
 style.configure("Treeview", background=tree_view_color_bg,fieldbackground=tree_view_color_fg, foreground="white")
 style.configure("TCombobox",fieldbackground= entry_box_color,foreground= element_color)
-
 def clear_all(treeview_name):
         for item in treeview_name.get_children():
             treeview_name.delete(item)
-    
 def clear_tv(label_name,treeview_name):
     label=label_name
     temp=messagebox.askquestion('Delete Product', 'Are you sure you want to Delete')
@@ -89,7 +76,6 @@ def clear_tv(label_name,treeview_name):
         except sqlite3.Error as err:
             print("Error - ",err)
             con.close()
-
 def selected_item_from_treeview(treeview_name,treeview_name_string):
     curItem = treeview_name.focus()
     treeview_name.item(curItem)
@@ -98,7 +84,8 @@ def selected_item_from_treeview(treeview_name,treeview_name_string):
         for key, value in selected_items.items():
             if key == 'values':
                 selected_treeview_item=value[1]
-                return selected_treeview_item
+                selected_treeview_date=value[0]
+                return selected_treeview_item,selected_treeview_date
 
 def total_lbl_update(label1,frame_name):
     label=label1
@@ -357,9 +344,9 @@ def update_budget():
 
     #Objects
     today = date.today()
-    date_tb = DateEntry(update_budget_frame, width= 16,height=0, background= "grey", foreground= "white",bd=4, maxdate=today)
-    date_tb.place(relx = 0.03, rely = 0.202, anchor = NW)
-    date_tb.place_forget()
+    dateentry = DateEntry(update_budget_frame, width= 16,height=0, background= "grey", foreground= "white",bd=4, maxdate=today,date_pattern='dd-MM-yyyy')
+    dateentry.place(relx = 0.03, rely = 0.202, anchor = NW)
+    dateentry.place_forget()
 
     def lower_case2(event):
         particulars.set(particulars.get().lower())
@@ -445,7 +432,8 @@ def update_budget():
             print("Error - ",err)
 
     def add_data():
-        todays_date=date_tb.get_date().strftime("%d-%m-%Y")
+        todays_date=dateentry.get_date().strftime("%d-%m-%Y")
+        print(dateentry)
         particulars=particulars_tb.get()
         income=float(income_tb.get())
         expense=float(expense_tb.get())
@@ -453,7 +441,10 @@ def update_budget():
             con=sqlite3.connect("my_data.sql")
             cur=con.cursor()
             cur.execute("CREATE TABLE IF NOT EXISTS daily_spends(date dates NOT NULL,particulars varchar2(25) NOT NULL,income decimal,expense decimal,total decimal,PRIMARY KEY (date, particulars))")
-            cur.execute("INSERT OR REPLACE INTO daily_spends(date,particulars,income,expense)VALUES(?, ?, ?, ?)", (todays_date, particulars, float(income), float(expense)))
+            cur.execute("UPDATE daily_spends SET particulars=?, income=?, expense=? WHERE date=? AND particulars=?", (particulars, float(income), float(expense), todays_date,particulars))
+            cur.execute("SELECT * from daily_spends")
+            row1=cur.fetchall()
+            cur.execute("UPDATE daily_spends SET total=(SELECT SUM(income)-SUM(expense) FROM daily_spends WHERE date=?) WHERE date=?", (row1[0][0], row1[0][0]))
             con.commit()
             cur.execute("SELECT date,particulars,income,expense from daily_spends ORDER BY expense ASC")
             row=cur.fetchall()
@@ -475,7 +466,14 @@ def update_budget():
             try:
                 con=sqlite3.connect("my_data.sql")
                 cur=con.cursor()
-                cur.execute("DELETE FROM daily_spends where particulars='{}'".format(str(selected_treeview_item)))
+                cur.execute("DELETE FROM daily_spends where particulars=? AND date=?",(selected_treeview_item[0],selected_treeview_item[1]))
+                cur.execute("SELECT * from daily_spends")
+                row1=cur.fetchall()
+                if len(row1)==0:
+                    print()
+                elif len(row1)>0:
+                    cur.execute("UPDATE daily_spends SET total=(SELECT SUM(income)-SUM(expense) FROM daily_spends WHERE date=?) WHERE date=?", (row1[0][0], row1[0][0]))
+                con.commit()
                 con.commit()
                 cur.execute("SELECT * FROM daily_spends ORDER BY expense ASC")
                 row=cur.fetchall()
@@ -565,24 +563,24 @@ def update_budget():
                 parti=value[1]
         update_tree_view.configure(selectmode='none')
 
-        date_tb.place(relx = 0.03, rely = 0.202, anchor = NW)
+        dateentry.place(relx = 0.03, rely = 0.202, anchor = NW)
         particulars_tb.place(relx = 0.10, rely = 0.198, anchor = NW)
         income_tb.place(relx = 0.222, rely = 0.198, anchor = NW)
         expense_tb.place(relx = 0.28, rely = 0.198, anchor = NW)
         add_btn.place(relx = 0.34, rely = 0.198, anchor = NW)
 
-        date_tb.delete(0,END)
+        dateentry.delete(0,END)
         particulars_tb.delete(0,END)
         income_tb.delete(0,END)
         expense_tb.delete(0,END)
 
-        date_tb.insert(0,date)
+        dateentry.insert(0,date)
         particulars_tb.insert(0,particulars)
         income_tb.insert(0,income)
         expense_tb.insert(0,expense)
 
     def destroy_update_element():
-        date_tb.place_forget()
+        dateentry.place_forget()
         particulars_tb.place_forget()
         income_tb.place_forget()
         expense_tb.place_forget()
