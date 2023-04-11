@@ -76,16 +76,23 @@ def clear_tv(label_name,treeview_name):
         except sqlite3.Error as err:
             print("Error - ",err)
             con.close()
-def selected_item_from_treeview(treeview_name,treeview_name_string):
+def selected_item_from_treeview(treeview_name):
     curItem = treeview_name.focus()
     treeview_name.item(curItem)
     selected_items =treeview_name.item(curItem)
-    if treeview_name_string=='todays_tree_view' or 'update_tree_view' or 'history_tree_view':
-        for key, value in selected_items.items():
-            if key == 'values':
-                selected_treeview_item=value[1]
-                selected_treeview_date=value[0]
-                return selected_treeview_item,selected_treeview_date
+    for key, value in selected_items.items():
+        if key == 'values':
+            selected_treeview_item=value[1]
+            return selected_treeview_item
+        
+def selected_item_from_treeview1(treeview_name):
+    curItem = treeview_name.focus()
+    treeview_name.item(curItem)
+    selected_items =treeview_name.item(curItem)
+    for key, value in selected_items.items():
+        if key == 'values':
+            selected_treeview_item=value[0]
+            return selected_treeview_item
 
 def total_lbl_update(label1,frame_name):
     label=label1
@@ -260,7 +267,7 @@ def todays_budget():
 
 
     def delete_todays_item():
-        selected_treeview_item=selected_item_from_treeview(todays_tree_view,'todays_tree_view')
+        selected_treeview_item=selected_item_from_treeview(todays_tree_view)
         temp=messagebox.askquestion('Delete Product', 'Are you sure you want to Delete')
         if temp=='yes':
             try:
@@ -460,20 +467,22 @@ def update_budget():
         destroy_update_element()
 
     def delete_update_item():
-        selected_treeview_item=selected_item_from_treeview(update_tree_view,'update_tree_view')
+        selected_treeview_item=selected_item_from_treeview1(update_tree_view)
+        selected_treeview_item1=selected_item_from_treeview(update_tree_view)
+        print(selected_treeview_item," ",selected_treeview_item1)
         temp=messagebox.askquestion('Delete Product', 'Are you sure you want to Delete')
         if temp=='yes':
             try:
                 con=sqlite3.connect("my_data.sql")
                 cur=con.cursor()
-                cur.execute("DELETE FROM daily_spends where particulars=? AND date=?",(selected_treeview_item[0],selected_treeview_item[1]))
+                cur.execute("DELETE FROM daily_spends where particulars=? AND date=?",(selected_treeview_item1,selected_treeview_item))
+                con.commit()
                 cur.execute("SELECT * from daily_spends")
                 row1=cur.fetchall()
                 if len(row1)==0:
                     print()
                 elif len(row1)>0:
                     cur.execute("UPDATE daily_spends SET total=(SELECT SUM(income)-SUM(expense) FROM daily_spends WHERE date=?) WHERE date=?", (row1[0][0], row1[0][0]))
-                con.commit()
                 con.commit()
                 cur.execute("SELECT * FROM daily_spends ORDER BY expense ASC")
                 row=cur.fetchall()
