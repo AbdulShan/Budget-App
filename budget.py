@@ -112,9 +112,9 @@ def total_lbl_update(label1,frame_name):
 def menu_frame_obj():
     global login_btn,add_btn,dealer_btn,update_btn,history_btn
     login_btn=Button(menu_frame,text="Login",width = 25,height=menu_button_height,fg=element_color,bg=menu_button_color,command=lambda:[login_obj()])
-    add_btn=Button(menu_frame,text="Todays Budget",width = 25,state='normal',fg=element_color,height=menu_button_height,bg=menu_button_color,command=lambda:[todays_budget()])
-    update_btn=Button(menu_frame,text="Update Budget",width = 25,fg=element_color,state='normal',height=menu_button_height,bg=menu_button_color,command=lambda:[update_budget()])
-    history_btn=Button(menu_frame,text="Budget History",width = 25,fg=element_color,state='normal',height=menu_button_height,bg=menu_button_color,command=lambda:[history()])
+    add_btn=Button(menu_frame,text="Todays Budget",width = 25,state='disabled',fg=element_color,height=menu_button_height,bg=menu_button_color,command=lambda:[todays_budget()])
+    update_btn=Button(menu_frame,text="Update Budget",width = 25,fg=element_color,state='disabled',height=menu_button_height,bg=menu_button_color,command=lambda:[update_budget()])
+    history_btn=Button(menu_frame,text="Budget History",width = 25,fg=element_color,state='disabled',height=menu_button_height,bg=menu_button_color,command=lambda:[history()])
 
     def place_menu(click):
         y=0.4+click
@@ -168,7 +168,7 @@ def login_obj():
     logout_btn.place(relx = 0.205, rely = 0.32, anchor = NW)
 
     def check_password():
-        if(username_tb.get()==username or password_tb.get()==password):
+        if(username_tb.get()==username and password_tb.get()==password):
             logout_btn.config(state='normal')
             login_btn.config(state='disabled')
             menu_btn_normal()
